@@ -1,79 +1,4 @@
-XML-VB-Test-Data-Generator
-==========================
-
-An XML driven Test Data Generator written in VB6
-
-Compendium Developments Test Data Generator Prototype
-Compendium-TDG
-copyright Compendium Developments 2005
-
-Alpha code - no warranty.
-
-Overview
---------
-Compendium-TDG is a test data generator using input XML files.
-
-Minimal instructions
---------------------
-
-The application requires VB runtimes in order to run. These are not supplied.
-The application also requires MSXML v3 or above. Also not supplied, but if you use
-a recent version of IE then MSXML should be installed.
-
-Also supplied is a sample xml file which describes the format of the input files
-and has some example rules.
-
-To Use the GUI, run the app.
-
-press [...] and select an input xml file to process.
-
-Then press [Parse XML]...
-The input xml file will be parsed and examples of the
-rules in the file will be displayed in the text box.
-Any found OutputRules will be displayed in the list box.
-
-Double click an output rule to run the rule and send the output to a chosen file.
-All records are crlf terminated
-
-
-Basic Concepts
---------------
-Sets are sets of data elements
-Rules act on sets or other rules to create data.
-OutputRules are used to generate records in an output file.
-
-The example data
-----------------
-The example data.xml file, the output rule when run will create 100 records in
-csv format, where:
- the first column is an item from the User Role set, 
- the second column is an item from the Customer Role set,
-
-Run from the command line
--------------------------
-Compendium-TDG can also be run from the command line e.g.
-testDataGenerator.exe -i c:\data\data.xml -o User Roles -of c:\output\userroles.csv
-
--i defines the input xml file
--o the output rule to execute
--of the output file
-
--o and -of can be repeated so
-
-testDataGenerator.exe -i c:\data\data.xml -o User Roles -of c:\output\userroles.csv -of c:\output\userroles2.csv
-would rule the same output rule from the same input file but produce a differnt output file
-
-if -o is repeated then the output file variable is blanked and has to be defined again by calling -of again
-testDataGenerator.exe -i c:\data\data.xml -o User Roles -of c:\output\userroles.csv -o output rule2 -of c:\output\userroles2.csv
-
-if the argument -s is used then no msgbox describing the arguments is given
-
-
-XML Format documentation
-------------------------
-The xml formatting rules can be found in the data\data.xml file and have been copied in here for initial distributions.
-
-```
+<?xml version="1.0"?>
 <!-- DataDefinitions
 	contains Sets and Rules and OutputRules
 
@@ -301,23 +226,205 @@ The xml formatting rules can be found in the data\data.xml file and have been co
 				or not
 			</CSVHEADER>
 
-```
+
+ -->
 
 
-Licensed Under Apache 2.0
---------------------------
 
 
-Copyright 2005 Alan Richardson - Compendium Developments
+<DataDefinitions>
+	<Sets>
+		<Set name = "User Role">
+			<Element>Manager</Element>
+			<Element>User</Element>
+			<Element>Designer</Element>
+			<Element>Developer</Element>
+		</Set>
+		<Set name = "Customer Role">
+			<Element>Site Licensee</Element>
+			<Element>Lifetime User</Element>
+			<Element>Trial User</Element>
+			<Element>Discounted User</Element>
+		</Set>
+		<set name = "aValue" fileName="rowdata.txt" fileType="ROWS"/>
+		<set name = "csv2Value" fileName="csvdata.csv" fileType="CSVCOLS" colID="2"/>
+	</Sets>
+	<Rules>
+		<Rule name ="personRole">
+			<SetOperation type="Union">
+			 	<OperatesOn>User Role</OperatesOn>
+				<OperatesOn>Customer Role</OperatesOn>
+			</SetOperation>
+		</Rule>
+		<Rule name = "padAccHeader">
+			<Range type="int" width="5" padded="left" paddedWith="0" from="0" to="99999"/>
+		</Rule>
+		<Rule name = "spaces">
+					<PadString maxlen="20" border="L"><Term></Term></PadString>
+		</Rule>
+		<Rule name = "accountNumber">
+			<Term name="padAccHeader"/>
+			<Optional probability="0.2">
+				<Repeat from="3" to ="20">
+					<Range type="char" from="A" to = "Z"/>
+				</Repeat>
+			</Optional>
+			<Term name="personRole"/>
+			<Range type="date" from="12/04/69" to="29/09/69" format="dddddd ttttt" />
+			<Choice>
+				<Option weighting="2">
+					<Repeat from="3" to ="20">
+						<Term>X</Term>
+					</Repeat>
+				</Option>
+				<Option weighting ="1">
+					<Repeat from="3" to ="20">
+						<Term>Y</Term>
+					</Repeat>
+				</Option>
+			</Choice>
+		</Rule>
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+		<Rule name="userRoleRecordsXMLorCSV">
+			<Repeat from="1" to="100">
+				<Record name="UserRole">
+				 <Field name="GUID">
+					<GUID braces="YES"/>
+				 </Field>
+					<Field name="User Role">
+						<Term name="User Role"/>
+					</Field>
+					<Field name="Customer Role">
+						<Term name="Customer Role"/>
+					</Field>
+					<Field name="AccountID">
+						<Term name="accountNumber"/>
+					</Field>
+					<Field name="A Value From Row File">
+						<Term name="aValue"/>
+					</Field>
+					<Field name="A Value From CSV File Col2">
+						<Term name="csv2Value"/>
+					</Field>
+				</Record>
+			</Repeat>
+		</Rule>
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	</Rules>
+	<OutputRules>
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+		<!--
+				This output rule has various rules and functions used
+				to demonstrate how some of them can be used in action
+		-->
+		<OutputRule name="GenericTest" type="TEXT">
+		  <Record>
+		  	<!--
+					create two variables for use later
+					aval will only have 10 chars as it is after the RIGHT
+					 function has been applied
+					prerightop will have all 20 chars as it is created before the right function
+					 is applied
+				-->
+		    <AS name="aval">
+		  	  <RIGHT len="10">
+		  	    <AS name="prerightop">
+		  		    <Term>1234567890-234567890</Term>
+		  		  </AS>
+		  		</RIGHT>
+		  	</AS>
+		  	<Term>,</Term>
+		  	<LEFT len="10">
+		  		<Term>1234567890-234567890</Term>
+		  	</LEFT>
+		  	<Term>,</Term>
+		  	<SUBSTR start="3" len="10">
+		  		<Term>1234567890-234567890</Term>
+		  	</SUBSTR>
+
+		  	<!-- demonstrate reuse of the variable contents -->
+		  	<Term>,aval:=</Term>
+		  	<Term name="aval"/>
+		  	<Term>,prerightop:=</Term>
+		  	<Term name="prerightop"/>
+
+		  	<!-- example of the TRIM function -->
+		  	<TRIM>
+		  		<!-- create a term with white space before and after in order to trim it out -->
+						<Term name="spaces"/>
+						<Term>--,--</Term>
+						<Term name="spaces"/>
+				</TRIM>
+		  </Record>
+		</OutputRule>
+
+
+
+		<!--
+			 	Use the same rule, called by a Term, to create an XML file,
+				or a CSV file (with and without headers
+		-->
+		<OutputRule name="User Roles XML" type="XML">
+			<Term name="userRoleRecordsXMLorCSV"/>
+		</OutputRule>
+
+		<OutputRule name="User Roles CSV with header" type="CSV">
+			<CSVHEADER show="TRUE">
+				<Term name="userRoleRecordsXMLorCSV"/>
+			</CSVHEADER>
+		</OutputRule>
+
+		<OutputRule name="User Roles CSV without header" type="CSV">
+			<CSVHEADER show="FALSE">
+				<Term name="userRoleRecordsXMLorCSV"/>
+			</CSVHEADER>
+		</OutputRule>
+
+
+		<!--
+		 		Output rule to create a CSV file, by outputing the , as
+		    a term.
+		    This is not as robust as using the Record & Field combination
+		    but may be necessary for some tasks
+		-->
+
+		<OutputRule name="User Roles Fake CSV" type="TEXT">
+			<Record>
+					<Term>GUID</Term>
+					<Term>,</Term>
+					<Term>User Role</Term>
+					<Term>,</Term>
+					<Term>Customer Role</Term>
+					<Term>,</Term>
+					<Term>AccountID</Term>
+					<Term>,</Term>
+					<Term>A Value From Row File</Term>
+					<Term>,</Term>
+					<Term>A Value From CSV File Col2</Term>
+
+			</Record>
+			<Repeat from="1" to="100">
+				<Record>
+					<GUID braces="YES"/>
+					<TRIM>
+						<Term name="spaces"/>
+						<Term>--,--</Term>
+						<Term name="spaces"/>
+					</TRIM>
+					<Term name="User Role"/>
+					<Term>,</Term>
+					<Term name="Customer Role"/>
+					<Term>,</Term>
+					<Term name="accountNumber"/>
+					<Term>,</Term>
+					<Term name="aValue"/>
+					<Term>,</Term>
+					<Term name="csv2Value"/>
+
+				</Record>
+			</Repeat>
+		</OutputRule>
+
+
+	</OutputRules>
+</DataDefinitions>
